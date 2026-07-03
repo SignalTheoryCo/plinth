@@ -14,10 +14,12 @@
     <Compile Include="src/Plinth/Utils/Markdown.fs" />
     <Compile Include="src/Plinth/Hooks/UseNotes.fs" />
     <Compile Include="src/Plinth/Hooks/UseSearch.fs" />
+    <Compile Include="src/Plinth/Hooks/UseSettings.fs" />
     <Compile Include="src/Plinth/Components/Editor.fs" />
     <Compile Include="src/Plinth/Components/Search.fs" />
     <Compile Include="src/Plinth/Components/Sidebar.fs" />
     <Compile Include="src/Plinth/Components/Backlinks.fs" />
+    <Compile Include="src/Plinth/Components/Settings.fs" />
     <Compile Include="src/Plinth/Pages/NoteView.fs" />
     <Compile Include="src/Plinth/App.fs" />
   </ItemGroup>
@@ -26,6 +28,7 @@
     <PackageReference Include="Fable.Core" Version="5.*" />
     <PackageReference Include="Fable.Promise" Version="3.*" />
     <PackageReference Include="Fable.Browser.Dom" Version="2.*" />
+    <PackageReference Include="Fable.Browser.WebStorage" Version="1.*" />
     <PackageReference Include="Feliz" Version="3.*" />
   </ItemGroup>
 

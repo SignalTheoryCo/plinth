@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: the app root toggles a `dark` class from settings. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Fable output is gitignored, and Tailwind v4 skips gitignored files when
    auto-detecting sources — so point it at the compiled JS explicitly. */
 @source "../build";
