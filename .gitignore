@@ -1,0 +1,25 @@
+# Rust
+target/
+
+# .NET
+bin/
+obj/
+
+# Fable compiler output
+build/
+fable_modules/
+
+# Frontend
+dist/
+node_modules/
+
+# Environment
+.env
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Tauri generated schemas
+src-tauri/gen/
