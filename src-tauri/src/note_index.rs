@@ -212,3 +212,59 @@ pub fn notes_for_tag(conn: &Connection, tag: &str) -> rusqlite::Result<Vec<Strin
     let rows = stmt.query_map(params![tag.to_lowercase()], |r| r.get(0))?;
     rows.collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The first-milestone flow, minus the GUI: build a vault on disk,
+    /// index it, follow links, check backlinks/tags/search.
+    #[test]
+    fn milestone_flow() {
+        let dir = std::env::temp_dir().join(format!("plinth-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("2026-07-03.md"),
+            "# 2026-07-03\n\nWorking on [[Plinth Roadmap]] today. #dev\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("Plinth Roadmap.md"),
+            "# Plinth Roadmap\n\nShip milestone one. #dev #roadmap\n",
+        )
+        .unwrap();
+
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE notes (name TEXT PRIMARY KEY, path TEXT NOT NULL, content TEXT NOT NULL);
+             CREATE TABLE links (source TEXT NOT NULL, target TEXT NOT NULL);
+             CREATE TABLE tags (note TEXT NOT NULL, tag TEXT NOT NULL);",
+        )
+        .unwrap();
+
+        assert_eq!(reindex_vault(&conn, &dir).unwrap(), 2);
+
+        // Sidebar list, sorted case-insensitively.
+        let names: Vec<String> = list_notes(&conn).unwrap().into_iter().map(|n| n.name).collect();
+        assert_eq!(names, vec!["2026-07-03", "Plinth Roadmap"]);
+
+        // [[Plinth Roadmap]] resolves (with spaces) and the daily note shows
+        // up as its backlink.
+        assert!(note_path(&conn, "plinth roadmap").unwrap().is_some());
+        assert_eq!(backlinks(&conn, "Plinth Roadmap").unwrap(), vec!["2026-07-03"]);
+
+        // Tag explorer: #dev on both notes, #roadmap on one.
+        let tags = all_tags(&conn).unwrap();
+        assert_eq!(tags.len(), 2);
+        assert_eq!((tags[0].tag.as_str(), tags[0].count), ("dev", 2));
+        assert_eq!(notes_for_tag(&conn, "roadmap").unwrap(), vec!["Plinth Roadmap"]);
+
+        // Full-text search hits the body, not just the title.
+        let hits = search(&conn, "milestone").unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].name, "Plinth Roadmap");
+        assert!(hits[0].snippet.to_lowercase().contains("milestone"));
+
+        fs::remove_dir_all(&dir).ok();
+    }
+}
