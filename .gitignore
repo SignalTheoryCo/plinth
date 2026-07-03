@@ -23,3 +23,6 @@ Desktop.ini
 
 # Tauri generated schemas
 src-tauri/gen/
+
+# Local tooling config
+.claude/
