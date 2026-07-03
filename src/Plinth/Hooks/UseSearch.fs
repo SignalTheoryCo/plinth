@@ -17,28 +17,27 @@ let useSearch () : SearchApi =
     let query, setQuery = React.useState ""
     let results, setResults = React.useState<SearchHit[]> [||]
 
-    React.useEffect (
-        (fun () ->
-            if query.Trim().Length < 2 then
-                setResults [||]
-                React.createDisposable ignore
-            else
-                let timer =
-                    JS.setTimeout
-                        (fun () ->
-                            promise {
-                                try
-                                    let! hits = Tauri.search (query.Trim())
-                                    setResults hits
-                                with _ ->
-                                    setResults [||]
-                            }
-                            |> Promise.start)
-                        250
+    let searchEffect () : unit -> unit =
+        if query.Trim().Length < 2 then
+            setResults [||]
+            ignore
+        else
+            let timer =
+                JS.setTimeout
+                    (fun () ->
+                        promise {
+                            try
+                                let! hits = Tauri.search (query.Trim())
+                                setResults hits
+                            with _ ->
+                                setResults [||]
+                        }
+                        |> Promise.start)
+                    250
 
-                React.createDisposable (fun () -> JS.clearTimeout timer)),
-        [| box query |]
-    )
+            fun () -> JS.clearTimeout timer
+
+    React.useEffect (searchEffect, [| box query |])
 
     { Query = query
       Results = results

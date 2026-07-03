@@ -55,7 +55,7 @@ let Editor
                     prop.className
                         "flex-1 resize-none bg-transparent px-6 py-4 font-mono text-[15px] leading-relaxed text-stone-800 outline-none"
                     prop.value content
-                    prop.spellcheck false
+                    prop.custom ("spellCheck", false)
                     prop.placeholder "Type your thoughts. Link with [[Note Name]], tag with #tag."
                     prop.onChange (fun (v: string) -> onChange v)
                 ]

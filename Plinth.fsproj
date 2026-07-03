@@ -23,10 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Fable.Core" Version="4.*" />
+    <PackageReference Include="Fable.Core" Version="5.*" />
     <PackageReference Include="Fable.Promise" Version="3.*" />
     <PackageReference Include="Fable.Browser.Dom" Version="2.*" />
-    <PackageReference Include="Feliz" Version="2.*" />
+    <PackageReference Include="Feliz" Version="3.*" />
   </ItemGroup>
 
 </Project>

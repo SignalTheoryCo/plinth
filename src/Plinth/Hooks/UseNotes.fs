@@ -92,35 +92,34 @@ let useNotes () : NotesApi =
 
     // Debounced autosave, 700 ms after the last keystroke. The effect's
     // cleanup cancels the pending timer whenever the content changes again.
-    React.useEffect (
-        (fun () ->
-            match current, dirty with
-            | EditingNote(name, content), true ->
-                let timer =
-                    JS.setTimeout
-                        (fun () ->
-                            let gen = editGen.current
+    let autosaveEffect () : unit -> unit =
+        match current, dirty with
+        | EditingNote(name, content), true ->
+            let timer =
+                JS.setTimeout
+                    (fun () ->
+                        let gen = editGen.current
 
-                            promise {
-                                try
-                                    let! updated = Tauri.writeFile name content
-                                    setNotes updated
-                                    let! bl = Tauri.getBacklinks name
-                                    setBacklinks bl
-                                    do! refreshTags ()
+                        promise {
+                            try
+                                let! updated = Tauri.writeFile name content
+                                setNotes updated
+                                let! bl = Tauri.getBacklinks name
+                                setBacklinks bl
+                                do! refreshTags ()
 
-                                    if editGen.current = gen then
-                                        setDirty false
-                                with ex ->
-                                    setCurrent (NoteError ex.Message)
-                            }
-                            |> Promise.start)
-                        700
+                                if editGen.current = gen then
+                                    setDirty false
+                            with ex ->
+                                setCurrent (NoteError ex.Message)
+                        }
+                        |> Promise.start)
+                    700
 
-                React.createDisposable (fun () -> JS.clearTimeout timer)
-            | _ -> React.createDisposable ignore),
-        [| box current; box dirty |]
-    )
+            fun () -> JS.clearTimeout timer
+        | _ -> ignore
+
+    React.useEffect (autosaveEffect, [| box current; box dirty |])
 
     let filterByTag (tag: string) =
         promise {
