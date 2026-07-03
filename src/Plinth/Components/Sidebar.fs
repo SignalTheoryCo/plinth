@@ -1,4 +1,5 @@
-/// Left rail: note list (optionally filtered by tag) + tag explorer.
+/// Left rail: recent notes, note list (optionally filtered by tag),
+/// and the tag explorer.
 module Plinth.Components.Sidebar
 
 open Feliz
@@ -7,9 +8,13 @@ open Plinth.Hooks.UseNotes
 
 let private sectionTitle (text: string) =
     Html.h2 [
-        prop.className "px-4 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-400"
+        prop.className
+            "px-4 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500"
         prop.text text
     ]
+
+let private mutedNote (text: string) =
+    Html.p [ prop.className "px-4 text-xs text-stone-400 dark:text-stone-500"; prop.text text ]
 
 [<ReactComponent>]
 let Sidebar (api: NotesApi) =
@@ -19,15 +24,15 @@ let Sidebar (api: NotesApi) =
         | LoadingNote n -> Some n
         | _ -> None
 
-    let noteButton (name: string) =
+    let noteButton (keyPrefix: string) (name: string) =
         Html.button [
-            prop.key name
+            prop.key (keyPrefix + name)
             prop.className (
-                "block w-full truncate px-4 py-1.5 text-left text-sm hover:bg-stone-200 "
+                "block w-full truncate px-4 py-1.5 text-left text-sm hover:bg-stone-200 dark:hover:bg-stone-700 "
                 + (if currentName = Some name then
-                       "bg-stone-200 font-medium text-emerald-900"
+                       "bg-stone-200 font-medium text-emerald-900 dark:bg-stone-700 dark:text-emerald-300"
                    else
-                       "text-stone-700")
+                       "text-stone-700 dark:text-stone-300")
             )
             prop.onClick (fun _ -> api.OpenNote name)
             prop.text name
@@ -42,19 +47,20 @@ let Sidebar (api: NotesApi) =
                     Html.button [
                         prop.className
                             "flex-1 rounded bg-emerald-800 px-3 py-1.5 text-sm text-white hover:bg-emerald-700"
-                        prop.title "Open today's daily note"
+                        prop.title "Open today's daily note (Ctrl+D)"
                         prop.onClick (fun _ -> api.OpenToday ())
                         prop.text "Today"
                     ]
-                    Html.button [
-                        prop.className
-                            "rounded border border-stone-300 px-2 py-1.5 text-sm text-stone-600 hover:bg-stone-200"
-                        prop.title "Change vault folder"
-                        prop.onClick (fun _ -> api.PickVault ())
-                        prop.text "Vault…"
-                    ]
                 ]
             ]
+            // Recent notes (skip when there's nothing beyond the current note).
+            if api.Recents.Length > 1 then
+                Html.div [
+                    prop.children [
+                        sectionTitle "Recent"
+                        yield! api.Recents |> Array.toList |> List.map (noteButton "recent-")
+                    ]
+                ]
             match api.TagFilter with
             | Some(tag, names) ->
                 Html.div [
@@ -64,13 +70,14 @@ let Sidebar (api: NotesApi) =
                             prop.children [
                                 sectionTitle (sprintf "#%s (%i)" tag names.Length)
                                 Html.button [
-                                    prop.className "text-xs text-stone-400 hover:text-stone-600"
+                                    prop.className
+                                        "text-xs text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
                                     prop.onClick (fun _ -> api.ClearTagFilter ())
                                     prop.text "clear"
                                 ]
                             ]
                         ]
-                        yield! names |> Array.toList |> List.map noteButton
+                        yield! names |> Array.toList |> List.map (noteButton "tag-")
                     ]
                 ]
             | None ->
@@ -78,19 +85,13 @@ let Sidebar (api: NotesApi) =
                     prop.children [
                         sectionTitle (sprintf "Notes (%i)" api.Notes.Length)
                         if api.Notes.Length = 0 then
-                            Html.p [
-                                prop.className "px-4 text-xs text-stone-400"
-                                prop.text "No notes yet — hit Today to start."
-                            ]
-                        yield! api.Notes |> Array.toList |> List.map (fun n -> noteButton n.Name)
+                            mutedNote "No notes yet — hit Today to start."
+                        yield! api.Notes |> Array.toList |> List.map (fun n -> noteButton "note-" n.Name)
                     ]
                 ]
             sectionTitle "Tags"
             if api.Tags.Length = 0 then
-                Html.p [
-                    prop.className "px-4 text-xs text-stone-400"
-                    prop.text "No tags yet — type #something in a note."
-                ]
+                mutedNote "No tags yet — type #something in a note."
             else
                 Html.div [
                     prop.className "flex flex-wrap gap-1 px-4"
@@ -101,7 +102,7 @@ let Sidebar (api: NotesApi) =
                             Html.button [
                                 prop.key t.Tag
                                 prop.className
-                                    "rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-600 hover:bg-amber-100 hover:text-amber-800"
+                                    "rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-600 hover:bg-amber-100 hover:text-amber-800 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-amber-900 dark:hover:text-amber-200"
                                 prop.onClick (fun _ -> api.FilterByTag t.Tag)
                                 prop.text (sprintf "#%s (%i)" t.Tag t.Count)
                             ])

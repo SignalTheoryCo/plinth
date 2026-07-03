@@ -11,7 +11,12 @@ open Feliz
 let private inlineRe =
     Regex(@"\[\[([^\[\]]+)\]\]|(^|\s)#([A-Za-z][A-Za-z0-9_/-]*)|\*\*([^\*]+)\*\*|`([^`]+)`")
 
-let private renderInline (text: string) (onLink: string -> unit) (onTag: string -> unit) =
+let private renderInline
+    (text: string)
+    (noteExists: string -> bool)
+    (onLink: string -> unit)
+    (onTag: string -> unit)
+    =
     let matches = inlineRe.Matches(text) |> Seq.cast<Match> |> List.ofSeq
 
     if List.isEmpty matches then
@@ -27,10 +32,17 @@ let private renderInline (text: string) (onLink: string -> unit) (onTag: string 
             if m.Groups.[1].Success then
                 let target = m.Groups.[1].Value.Trim()
 
+                // Links to notes that don't exist yet render muted with a
+                // dashed underline — still clickable, clicking creates them.
+                let cls =
+                    if noteExists target then
+                        "cursor-pointer text-emerald-700 underline decoration-emerald-300 hover:text-emerald-900 dark:text-emerald-400 dark:decoration-emerald-700 dark:hover:text-emerald-300"
+                    else
+                        "cursor-pointer text-stone-400 underline decoration-dashed decoration-stone-300 hover:text-emerald-700 dark:text-stone-500 dark:decoration-stone-600 dark:hover:text-emerald-400"
+
                 parts.Add(
                     Html.a [
-                        prop.className
-                            "cursor-pointer text-emerald-700 underline decoration-emerald-300 hover:text-emerald-900"
+                        prop.className cls
                         prop.onClick (fun e ->
                             e.preventDefault ()
                             onLink target)
@@ -45,7 +57,8 @@ let private renderInline (text: string) (onLink: string -> unit) (onTag: string 
 
                 parts.Add(
                     Html.button [
-                        prop.className "cursor-pointer text-amber-700 hover:text-amber-900"
+                        prop.className
+                            "cursor-pointer text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
                         prop.onClick (fun _ -> onTag tag)
                         prop.text ("#" + m.Groups.[3].Value)
                     ]
@@ -55,7 +68,7 @@ let private renderInline (text: string) (onLink: string -> unit) (onTag: string 
             elif m.Groups.[5].Success then
                 parts.Add(
                     Html.code [
-                        prop.className "rounded bg-stone-100 px-1 text-sm"
+                        prop.className "rounded bg-stone-100 px-1 text-sm dark:bg-stone-800"
                         prop.text m.Groups.[5].Value
                     ]
                 )
@@ -68,7 +81,9 @@ let private renderInline (text: string) (onLink: string -> unit) (onTag: string 
         List.ofSeq parts
 
 /// Render a whole note body as a preview.
-let render (content: string) (onLink: string -> unit) (onTag: string -> unit) =
+let render (content: string) (noteExists: string -> bool) (onLink: string -> unit) (onTag: string -> unit) =
+    let inline' text = renderInline text noteExists onLink onTag
+
     let blocks =
         content.Replace("\r\n", "\n").Split('\n')
         |> Array.toList
@@ -79,28 +94,25 @@ let render (content: string) (onLink: string -> unit) (onTag: string -> unit) =
                 Html.h3 [
                     prop.key i
                     prop.className "mt-4 mb-1 text-lg font-semibold"
-                    prop.children (renderInline (t.Substring 4) onLink onTag)
+                    prop.children (inline' (t.Substring 4))
                 ]
             elif t.StartsWith("## ") then
                 Html.h2 [
                     prop.key i
                     prop.className "mt-5 mb-2 text-xl font-semibold"
-                    prop.children (renderInline (t.Substring 3) onLink onTag)
+                    prop.children (inline' (t.Substring 3))
                 ]
             elif t.StartsWith("# ") then
                 Html.h1 [
                     prop.key i
                     prop.className "mt-2 mb-3 font-serif text-2xl font-bold"
-                    prop.children (renderInline (t.Substring 2) onLink onTag)
+                    prop.children (inline' (t.Substring 2))
                 ]
             elif t.StartsWith("- ") then
                 Html.div [
                     prop.key i
                     prop.className "ml-2 flex gap-2"
-                    prop.children (
-                        Html.span [ prop.text "•" ]
-                        :: renderInline (t.Substring 2) onLink onTag
-                    )
+                    prop.children (Html.span [ prop.text "•" ] :: inline' (t.Substring 2))
                 ]
             elif t = "" then
                 Html.div [ prop.key i; prop.className "h-3" ]
@@ -108,7 +120,7 @@ let render (content: string) (onLink: string -> unit) (onTag: string -> unit) =
                 Html.p [
                     prop.key i
                     prop.className "leading-relaxed"
-                    prop.children (renderInline t onLink onTag)
+                    prop.children (inline' t)
                 ])
 
     Html.div [ prop.className "max-w-none"; prop.children blocks ]
