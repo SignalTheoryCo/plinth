@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Fable output is gitignored, and Tailwind v4 skips gitignored files when
+   auto-detecting sources — so point it at the compiled JS explicitly. */
+@source "../build";
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--color-stone-400);
+}
