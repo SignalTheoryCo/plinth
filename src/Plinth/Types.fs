@@ -3,6 +3,9 @@ module Plinth.Types
 /// Metadata for a note in the vault, as returned by the Rust index.
 type NoteMeta = { Name: string; Path: string }
 
+/// A note's canonical name plus its markdown body.
+type NoteContent = { Name: string; Content: string }
+
 /// One full-text search result.
 type SearchHit = { Name: string; Snippet: string }
 
