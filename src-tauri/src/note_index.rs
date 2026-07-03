@@ -49,6 +49,10 @@ pub fn open(db_path: &Path) -> rusqlite::Result<Connection> {
              note TEXT NOT NULL,
              tag  TEXT NOT NULL
          );
+         CREATE TABLE IF NOT EXISTS recents (
+             note      TEXT PRIMARY KEY,
+             opened_at INTEGER NOT NULL
+         );
          CREATE INDEX IF NOT EXISTS idx_links_target ON links(target);
          CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);",
     )?;
@@ -80,7 +84,7 @@ pub fn reindex_vault(conn: &Connection, vault: &Path) -> Result<usize, String> {
     Ok(count)
 }
 
-fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+pub(crate) fn is_hidden(entry: &walkdir::DirEntry) -> bool {
     entry.depth() > 0
         && entry
             .file_name()
@@ -124,37 +128,124 @@ pub fn list_notes(conn: &Connection) -> rusqlite::Result<Vec<NoteMeta>> {
     rows.collect()
 }
 
-/// Resolve a note name (case-insensitively) to its file path.
-pub fn note_path(conn: &Connection, name: &str) -> rusqlite::Result<Option<PathBuf>> {
-    let mut stmt = conn.prepare("SELECT path FROM notes WHERE name = ?1 COLLATE NOCASE")?;
-    let mut rows = stmt.query_map(params![name], |r| r.get::<_, String>(0))?;
+/// Resolve a note name (case-insensitively) to its file path and the
+/// canonical name stored in the index. Callers must index/track under the
+/// canonical name so "[[plinth roadmap]]" and "Plinth Roadmap.md" stay one note.
+pub fn note_path(conn: &Connection, name: &str) -> rusqlite::Result<Option<(PathBuf, String)>> {
+    let mut stmt = conn.prepare("SELECT path, name FROM notes WHERE name = ?1 COLLATE NOCASE")?;
+    let mut rows = stmt.query_map(params![name], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+    })?;
     match rows.next() {
-        Some(path) => Ok(Some(PathBuf::from(path?))),
+        Some(row) => {
+            let (path, canonical) = row?;
+            Ok(Some((PathBuf::from(path), canonical)))
+        }
         None => Ok(None),
     }
 }
 
-/// Case-insensitive substring search over note names and bodies.
+/// True when every char of `needle` appears in `hay` in order ("plnth" ~ "plinth").
+fn is_subsequence(needle: &str, hay: &str) -> bool {
+    let mut hay_chars = hay.chars();
+    'outer: for nc in needle.chars() {
+        for hc in hay_chars.by_ref() {
+            if hc == nc {
+                continue 'outer;
+            }
+        }
+        return false;
+    }
+    true
+}
+
+/// Ranked search: exact title substring beats all-terms-in-title beats a
+/// fuzzy (subsequence) title match; matching the body adds on top. Every
+/// hit carries a context snippet around the first body match.
 pub fn search(conn: &Connection, query: &str) -> rusqlite::Result<Vec<SearchHit>> {
-    let pattern = format!("%{}%", query);
-    let mut stmt = conn.prepare(
-        "SELECT name, content FROM notes
-         WHERE name LIKE ?1 OR content LIKE ?1
-         ORDER BY name COLLATE NOCASE
-         LIMIT 50",
-    )?;
-    let rows = stmt.query_map(params![pattern], |r| {
+    let q = query.trim().to_lowercase();
+    if q.is_empty() {
+        return Ok(Vec::new());
+    }
+    let terms: Vec<&str> = q.split_whitespace().collect();
+    let compact: String = q.chars().filter(|c| !c.is_whitespace()).collect();
+
+    let mut stmt = conn.prepare("SELECT name, content FROM notes")?;
+    let rows = stmt.query_map([], |r| {
         Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
     })?;
-    let mut hits = Vec::new();
+
+    let mut scored: Vec<(i64, SearchHit)> = Vec::new();
     for row in rows {
         let (name, content) = row?;
-        hits.push(SearchHit {
-            snippet: make_snippet(&content, query),
-            name,
-        });
+        let name_l = name.to_lowercase();
+        let content_l = content.to_lowercase();
+
+        let mut score = if name_l.contains(&q) {
+            100
+        } else if terms.iter().all(|t| name_l.contains(t)) {
+            80
+        } else if compact.len() >= 3 && is_subsequence(&compact, &name_l) {
+            55
+        } else {
+            0
+        };
+
+        // First term that appears in the body anchors the snippet.
+        let body_anchor = terms
+            .iter()
+            .filter_map(|t| content_l.find(t).map(|pos| (pos, *t)))
+            .min();
+        if terms.iter().all(|t| content_l.contains(t)) {
+            score += 35;
+        }
+
+        if score > 0 {
+            let snippet = match body_anchor {
+                Some((_, term)) => make_snippet(&content, term),
+                None => content.chars().take(80).collect(),
+            };
+            scored.push((score, SearchHit { name, snippet }));
+        }
     }
-    Ok(hits)
+
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.name.cmp(&b.1.name)));
+    Ok(scored.into_iter().take(50).map(|(_, hit)| hit).collect())
+}
+
+/// Record that a note was opened just now (for the Recent section).
+pub fn touch_recent(conn: &Connection, name: &str) -> rusqlite::Result<()> {
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    conn.execute(
+        "INSERT INTO recents(note, opened_at) VALUES (?1, ?2)
+         ON CONFLICT(note) DO UPDATE SET opened_at = ?2",
+        params![name, now_ms],
+    )?;
+    Ok(())
+}
+
+/// Most recently opened notes, newest first. The join drops entries whose
+/// note has since been deleted or renamed.
+pub fn recent_notes(conn: &Connection, limit: i64) -> rusqlite::Result<Vec<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT r.note FROM recents r JOIN notes n ON n.name = r.note
+         ORDER BY r.opened_at DESC LIMIT ?1",
+    )?;
+    let rows = stmt.query_map(params![limit], |r| r.get(0))?;
+    rows.collect()
+}
+
+/// Drop a note from every index table. Backlinks pointing at it stay in
+/// other notes' text and simply become create-on-click links again.
+pub fn remove_note(conn: &Connection, name: &str) -> rusqlite::Result<()> {
+    conn.execute("DELETE FROM notes WHERE name = ?1 COLLATE NOCASE", params![name])?;
+    conn.execute("DELETE FROM links WHERE source = ?1 COLLATE NOCASE", params![name])?;
+    conn.execute("DELETE FROM tags WHERE note = ?1 COLLATE NOCASE", params![name])?;
+    conn.execute("DELETE FROM recents WHERE note = ?1 COLLATE NOCASE", params![name])?;
+    Ok(())
 }
 
 fn make_snippet(content: &str, query: &str) -> String {
@@ -234,13 +325,7 @@ mod tests {
         )
         .unwrap();
 
-        let conn = Connection::open_in_memory().unwrap();
-        conn.execute_batch(
-            "CREATE TABLE notes (name TEXT PRIMARY KEY, path TEXT NOT NULL, content TEXT NOT NULL);
-             CREATE TABLE links (source TEXT NOT NULL, target TEXT NOT NULL);
-             CREATE TABLE tags (note TEXT NOT NULL, tag TEXT NOT NULL);",
-        )
-        .unwrap();
+        let conn = open(&dir.join("index.db")).unwrap();
 
         assert_eq!(reindex_vault(&conn, &dir).unwrap(), 2);
 
@@ -248,9 +333,10 @@ mod tests {
         let names: Vec<String> = list_notes(&conn).unwrap().into_iter().map(|n| n.name).collect();
         assert_eq!(names, vec!["2026-07-03", "Plinth Roadmap"]);
 
-        // [[Plinth Roadmap]] resolves (with spaces) and the daily note shows
-        // up as its backlink.
-        assert!(note_path(&conn, "plinth roadmap").unwrap().is_some());
+        // [[Plinth Roadmap]] resolves case-insensitively (with spaces) and
+        // reports the canonical name; the daily note shows as its backlink.
+        let (_, canonical) = note_path(&conn, "plinth roadmap").unwrap().unwrap();
+        assert_eq!(canonical, "Plinth Roadmap");
         assert_eq!(backlinks(&conn, "Plinth Roadmap").unwrap(), vec!["2026-07-03"]);
 
         // Tag explorer: #dev on both notes, #roadmap on one.
@@ -264,6 +350,29 @@ mod tests {
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].name, "Plinth Roadmap");
         assert!(hits[0].snippet.to_lowercase().contains("milestone"));
+
+        // Fuzzy title match: subsequence with typos-by-omission still finds it.
+        let fuzzy = search(&conn, "plnth rdmp").unwrap();
+        assert_eq!(fuzzy.len(), 1);
+        assert_eq!(fuzzy[0].name, "Plinth Roadmap");
+
+        // Multi-term search must match all terms.
+        assert_eq!(search(&conn, "ship nothing").unwrap().len(), 0);
+        assert_eq!(search(&conn, "ship milestone").unwrap().len(), 1);
+
+        // Recents: most recently opened first, capped, and pruned on delete.
+        touch_recent(&conn, "Plinth Roadmap").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        touch_recent(&conn, "2026-07-03").unwrap();
+        assert_eq!(
+            recent_notes(&conn, 10).unwrap(),
+            vec!["2026-07-03", "Plinth Roadmap"]
+        );
+
+        remove_note(&conn, "plinth roadmap").unwrap();
+        assert_eq!(list_notes(&conn).unwrap().len(), 1);
+        assert_eq!(recent_notes(&conn, 10).unwrap(), vec!["2026-07-03"]);
+        assert!(all_tags(&conn).unwrap().iter().all(|t| t.tag != "roadmap"));
 
         fs::remove_dir_all(&dir).ok();
     }

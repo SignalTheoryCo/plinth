@@ -3,10 +3,20 @@ mod note_index;
 
 use note_index::{NoteMeta, SearchHit, TagCount};
 use rusqlite::Connection;
+use serde::Serialize;
 use std::fs;
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::State;
+use walkdir::WalkDir;
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct NoteContent {
+    pub name: String,
+    pub content: String,
+}
 
 struct Vault {
     root: PathBuf,
@@ -61,22 +71,28 @@ fn read_dir(state: State<AppState>) -> Result<Vec<NoteMeta>, String> {
 
 /// Read a note by name. Following a [[link]] to a note that does not exist
 /// yet should create it, so a miss creates the file with a heading stub.
+/// Returns the canonical name so "[[plinth roadmap]]" opens as "Plinth Roadmap".
 #[tauri::command]
-fn read_file(name: String, state: State<AppState>) -> Result<String, String> {
+fn read_file(name: String, state: State<AppState>) -> Result<NoteContent, String> {
     let name = name.trim().to_string();
     validate_name(&name)?;
     with_vault(&state, |v| {
-        match note_index::note_path(&v.conn, &name).map_err(|e| e.to_string())? {
-            Some(path) => fs::read_to_string(&path).map_err(|e| e.to_string()),
+        let result = match note_index::note_path(&v.conn, &name).map_err(|e| e.to_string())? {
+            Some((path, canonical)) => NoteContent {
+                content: fs::read_to_string(&path).map_err(|e| e.to_string())?,
+                name: canonical,
+            },
             None => {
                 let path = v.root.join(format!("{name}.md"));
                 let content = format!("# {name}\n\n");
                 fs::write(&path, &content).map_err(|e| e.to_string())?;
                 note_index::index_note(&v.conn, &name, &path.to_string_lossy(), &content)
                     .map_err(|e| e.to_string())?;
-                Ok(content)
+                NoteContent { name: name.clone(), content }
             }
-        }
+        };
+        note_index::touch_recent(&v.conn, &result.name).map_err(|e| e.to_string())?;
+        Ok(result)
     })
 }
 
@@ -91,15 +107,71 @@ fn write_file(
     let name = name.trim().to_string();
     validate_name(&name)?;
     with_vault(&state, |v| {
-        let path = match note_index::note_path(&v.conn, &name).map_err(|e| e.to_string())? {
-            Some(path) => path,
-            None => v.root.join(format!("{name}.md")),
-        };
+        let (path, canonical) =
+            match note_index::note_path(&v.conn, &name).map_err(|e| e.to_string())? {
+                Some(resolved) => resolved,
+                None => (v.root.join(format!("{name}.md")), name.clone()),
+            };
         fs::write(&path, &content).map_err(|e| e.to_string())?;
-        note_index::index_note(&v.conn, &name, &path.to_string_lossy(), &content)
+        note_index::index_note(&v.conn, &canonical, &path.to_string_lossy(), &content)
             .map_err(|e| e.to_string())?;
         note_index::list_notes(&v.conn).map_err(|e| e.to_string())
     })
+}
+
+/// Delete a note's file and drop it from the index. Notes that linked to it
+/// keep their [[link]] text; those links just create the note again if clicked.
+#[tauri::command]
+fn delete_file(name: String, state: State<AppState>) -> Result<Vec<NoteMeta>, String> {
+    let name = name.trim().to_string();
+    validate_name(&name)?;
+    with_vault(&state, |v| {
+        if let Some((path, _)) = note_index::note_path(&v.conn, &name).map_err(|e| e.to_string())? {
+            fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+        note_index::remove_note(&v.conn, &name).map_err(|e| e.to_string())?;
+        note_index::list_notes(&v.conn).map_err(|e| e.to_string())
+    })
+}
+
+#[tauri::command]
+fn get_recents(state: State<AppState>) -> Result<Vec<String>, String> {
+    with_vault(&state, |v| {
+        note_index::recent_notes(&v.conn, 10).map_err(|e| e.to_string())
+    })
+}
+
+/// Zip every visible file in the vault to `dest`. Returns the file count.
+#[tauri::command]
+fn export_vault(dest: String, state: State<AppState>) -> Result<usize, String> {
+    with_vault(&state, |v| export_zip(&v.root, Path::new(&dest)))
+}
+
+fn export_zip(root: &Path, dest: &Path) -> Result<usize, String> {
+    let file = fs::File::create(dest).map_err(|e| e.to_string())?;
+    let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    let mut count = 0;
+    for entry in WalkDir::new(root)
+        .into_iter()
+        .filter_entry(|e| !note_index::is_hidden(e))
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        // Don't zip the archive into itself if it's being written into the vault.
+        if !path.is_file() || path == dest {
+            continue;
+        }
+        let rel = path.strip_prefix(root).map_err(|e| e.to_string())?;
+        zip.start_file(rel.to_string_lossy().replace('\\', "/"), options)
+            .map_err(|e| e.to_string())?;
+        let data = fs::read(path).map_err(|e| e.to_string())?;
+        zip.write_all(&data).map_err(|e| e.to_string())?;
+        count += 1;
+    }
+    zip.finish().map_err(|e| e.to_string())?;
+    Ok(count)
 }
 
 #[tauri::command]
@@ -140,10 +212,13 @@ pub fn run() {
             read_dir,
             read_file,
             write_file,
+            delete_file,
             search,
             get_backlinks,
             get_tags,
-            get_notes_by_tag
+            get_notes_by_tag,
+            get_recents,
+            export_vault
         ])
         .run(tauri::generate_context!())
         .expect("error while running Plinth");
