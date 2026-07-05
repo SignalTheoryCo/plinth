@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plinth — a foundation for your notes</title>
+<meta name="description" content="Plinth is a local-first markdown notebook. Your notes live as plain text on your own hard drive. No cloud, no accounts, no sync." />
+
+<!-- Open Graph / social preview -->
+<meta property="og:title" content="Plinth — a foundation for your notes" />
+<meta property="og:description" content="A local-first markdown notebook. Plain text, on your drive, exactly where you left it." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="assets/icon.png" />
+
+<link rel="icon" type="image/png" href="assets/icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --bg:#151c2b;
+    --bg-2:#1b2437;
+    --panel:#212c42;
+    --line:#2f3b54;
+    --stone:#e3ded1;
+    --stone-dim:#b9c0cf;
+    --muted:#8a93a6;
+    --amber:#d98e48;
+    --amber-2:#e9a860;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:radial-gradient(1100px 600px at 70% -10%,#25324b 0%,var(--bg) 55%) no-repeat,var(--bg);
+    color:var(--stone);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  a{color:inherit;text-decoration:none}
+
+  /* nav */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:19px}
+  .brand img{width:34px;height:34px;border-radius:9px}
+  .nav-links{display:flex;gap:26px;align-items:center;color:var(--stone-dim);font-size:15px;font-weight:500}
+  .nav-links a:hover{color:var(--stone)}
+
+  /* hero */
+  .hero{padding:64px 0 40px;text-align:center}
+  .eyebrow{display:inline-block;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--amber-2);
+    border:1px solid var(--line);border-radius:999px;padding:6px 14px;margin-bottom:26px;background:rgba(217,142,72,.06)}
+  h1{font-size:clamp(38px,6vw,66px);line-height:1.05;font-weight:800;letter-spacing:-.02em;margin-bottom:22px}
+  h1 .accent{color:var(--amber-2)}
+  .lede{font-size:clamp(17px,2.2vw,21px);color:var(--stone-dim);max-width:620px;margin:0 auto 34px}
+  .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:16px;padding:14px 26px;border-radius:12px;transition:.15s}
+  .btn-primary{background:var(--amber);color:#20160a}
+  .btn-primary:hover{background:var(--amber-2);transform:translateY(-1px)}
+  .btn-ghost{border:1px solid var(--line);color:var(--stone);background:var(--panel)}
+  .btn-ghost:hover{border-color:#43516f}
+  .fineprint{font-size:13px;color:var(--muted);margin-top:4px}
+
+  /* app mockup */
+  .mock{margin:52px auto 0;max-width:900px;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    box-shadow:0 30px 80px -30px rgba(0,0,0,.7);background:var(--bg-2)}
+  .mock-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#1a2234;border-bottom:1px solid var(--line)}
+  .dot{width:12px;height:12px;border-radius:50%}
+  .dot.r{background:#e06c60}.dot.y{background:#e6b04b}.dot.g{background:#5fb87f}
+  .mock-title{margin-left:12px;font-size:13px;color:var(--muted)}
+  .mock-body{display:grid;grid-template-columns:220px 1fr;min-height:340px}
+  .side{background:#1a2234;border-right:1px solid var(--line);padding:16px 14px;font-size:13.5px}
+  .side .search{background:#141b29;border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--muted);margin-bottom:18px}
+  .side h4{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:16px 0 8px;font-weight:600}
+  .side .item{padding:6px 8px;border-radius:6px;color:var(--stone-dim)}
+  .side .item.active{background:rgba(217,142,72,.12);color:var(--stone)}
+  .tag{display:inline-block;font-size:12px;color:var(--amber-2);background:rgba(217,142,72,.08);border:1px solid rgba(217,142,72,.25);
+    border-radius:6px;padding:2px 8px;margin:3px 4px 0 0}
+  .editor{padding:26px 30px;text-align:left}
+  .editor .note-title{font-size:22px;font-weight:700;margin-bottom:14px}
+  .editor p{color:var(--stone-dim);font-size:15px;margin-bottom:12px}
+  .editor .wl{color:var(--amber-2);border-bottom:1px solid rgba(233,168,96,.4)}
+  .editor .backlinks{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+  .editor .backlinks h5{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+  .editor .backlinks a{color:var(--stone-dim);font-size:14px}
+
+  /* pillars */
+  section{padding:66px 0}
+  .section-head{text-align:center;max-width:640px;margin:0 auto 44px}
+  .section-head h2{font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
+  .section-head p{color:var(--stone-dim);font-size:17px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:28px}
+  .card .k{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--amber-2);margin-bottom:12px}
+  .card h3{font-size:20px;font-weight:700;margin-bottom:8px}
+  .card p{color:var(--stone-dim);font-size:15px}
+
+  /* feature list */
+  .features{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 34px;max-width:760px;margin:0 auto}
+  .feat{display:flex;gap:12px;align-items:flex-start;font-size:15.5px;color:var(--stone-dim)}
+  .feat .mk{color:var(--amber-2);font-weight:800;flex:0 0 auto}
+  .feat b{color:var(--stone);font-weight:600}
+
+  /* download band */
+  .download{background:linear-gradient(180deg,#1c2740,#171f30);border:1px solid var(--line);border-radius:22px;padding:52px 30px;text-align:center;margin:20px 0}
+  .download h2{font-size:clamp(26px,4vw,38px);font-weight:800;margin-bottom:12px}
+  .download p{color:var(--stone-dim);max-width:520px;margin:0 auto 26px}
+  .win-note{max-width:560px;margin:22px auto 0;font-size:13.5px;color:var(--muted);background:#141b29;border:1px solid var(--line);border-radius:10px;padding:14px 18px;text-align:left}
+  .win-note b{color:var(--stone-dim)}
+
+  footer{border-top:1px solid var(--line);padding:34px 0;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+  @media(max-width:720px){
+    .nav-links{display:none}
+    .mock-body{grid-template-columns:1fr}
+    .side{display:none}
+    .grid,.features{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav>
+    <div class="brand"><img src="assets/icon.png" alt="Plinth icon" /> Plinth</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pillars">Why Plinth</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/SignalTheoryCo/plinth" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow">Local-first · Plain text · Yours</span>
+    <h1>A foundation for<br>your <span class="accent">notes</span>.</h1>
+    <p class="lede">Software changes, companies fold, and clouds crash. Your thoughts deserve a foundation that doesn't move. Plinth keeps every note as plain Markdown, on your own drive, exactly where you left it.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#download">Download for Windows</a>
+      <a class="btn btn-ghost" href="https://github.com/SignalTheoryCo/plinth" target="_blank" rel="noopener">View source</a>
+    </div>
+    <p class="fineprint">Free · No account · Works offline</p>
+
+    <!-- app mockup -->
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="mock-title">Plinth — my-vault</span>
+      </div>
+      <div class="mock-body">
+        <div class="side">
+          <div class="search">Search notes…</div>
+          <div class="item active">Today</div>
+          <h4>Recent</h4>
+          <div class="item">Plinth Roadmap</div>
+          <div class="item">Reading list</div>
+          <div class="item">2026-07-04</div>
+          <h4>Tags</h4>
+          <div><span class="tag">#idea</span><span class="tag">#project</span><span class="tag">#daily</span></div>
+        </div>
+        <div class="editor">
+          <div class="note-title">Plinth Roadmap</div>
+          <p>Ship the Windows build, then a landing page. See <span class="wl">[[Reading list]]</span> for references.</p>
+          <p>Core stays simple: plain files, fast search, <span class="wl">[[backlinks]]</span>. <span class="tag">#project</span></p>
+          <p>No cloud. No plugins. Move the folder, the app still works.</p>
+          <div class="backlinks">
+            <h5>Linked from</h5>
+            <a>← Reading list</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="pillars">
+    <div class="section-head">
+      <h2>Built on three refusals</h2>
+      <p>Most note apps add. Plinth subtracts the things that get between you and your writing.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="k">Zero Cloud</div>
+        <h3>Your drive, not ours</h3>
+        <p>Every file lives natively on your hard drive as standard Markdown. Nothing is uploaded. Nothing to breach.</p>
+      </div>
+      <div class="card">
+        <div class="k">Zero Plugins</div>
+        <h3>Nothing to troubleshoot</h3>
+        <p>Core features are baked in, so you never chase a broken community plugin or a config file again.</p>
+      </div>
+      <div class="card">
+        <div class="k">Zero Friction</div>
+        <h3>Open, type, close</h3>
+        <p>No setup, no onboarding, no accounts. Point it at a folder and start writing in seconds.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="section-head">
+      <h2>Everything you need, nothing you don't</h2>
+      <p>The parts of a real notebook, without the weight.</p>
+    </div>
+    <div class="features">
+      <div class="feat"><span class="mk">▪</span><span><b>Plain Markdown files</b> in a folder you choose. Your notes outlive the app.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Daily notes</b> created automatically, one keystroke away.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Wiki links</b> with <code>[[Note Name]]</code> to connect ideas.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Backlinks panel</b> showing what points at the note you're reading.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Ranked, typo-tolerant search</b> across everything you've written.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Tag explorer</b> for <code>#tags</code>, right in the sidebar.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Light and dark</b> themes that remember your choice.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Export your vault</b> to a zip anytime. Leave whenever you like.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="download" id="download">
+      <h2>Download Plinth</h2>
+      <p>Free and offline. Your notes never leave your machine.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/SignalTheoryCo/plinth/releases/latest" target="_blank" rel="noopener">Download for Windows</a>
+        <a class="btn btn-ghost" href="https://github.com/SignalTheoryCo/plinth" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <div class="win-note">
+        <b>First launch on Windows:</b> because this is an independent app that isn't code-signed yet, Windows may show a blue "Windows protected your PC" screen. Click <b>More info</b>, then <b>Run anyway</b>. This is expected for indie software and goes away once the app is signed.
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div>Plinth — your thoughts, on a foundation that doesn't move.</div>
+    <div>Built by Sebbe · Plain text forever</div>
+  </footer>
+
+</div>
+</body>
+</html>

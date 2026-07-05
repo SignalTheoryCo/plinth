@@ -1,0 +1,26 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3752"/>
+      <stop offset="1" stop-color="#151c2b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="180" fill="url(#bg)"/>
+
+  <!-- the object resting on the plinth (accent) -->
+  <rect x="440" y="212" width="144" height="130" rx="10" fill="#d98e48"/>
+  <rect x="440" y="212" width="144" height="26" rx="10" fill="#e9a860"/>
+
+  <!-- top cap of the plinth -->
+  <rect x="336" y="342" width="352" height="44" rx="9" fill="#e3ded1"/>
+  <rect x="336" y="342" width="352" height="12" rx="6" fill="#f2eee3"/>
+
+  <!-- shaft / die -->
+  <rect x="374" y="386" width="276" height="330" fill="#dbd5c6"/>
+
+  <!-- base slab -->
+  <rect x="232" y="716" width="560" height="92" rx="10" fill="#e3ded1"/>
+  <rect x="232" y="716" width="560" height="16" rx="8" fill="#f2eee3"/>
+</svg>

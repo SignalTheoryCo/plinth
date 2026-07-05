@@ -16,6 +16,10 @@ node_modules/
 # Environment
 .env
 
+# Local note vaults and app index (never commit personal notes)
+MyPlinthNotes/
+.plinth/
+
 # OS files
 Thumbs.db
 Desktop.ini
