@@ -17,7 +17,7 @@ let private mutedNote (text: string) =
     Html.p [ prop.className "px-4 text-xs text-stone-400 dark:text-stone-500"; prop.text text ]
 
 [<ReactComponent>]
-let Sidebar (api: NotesApi) =
+let Sidebar (api: NotesApi) (onGraph: unit -> unit) =
     let currentName =
         match api.Current with
         | EditingNote(n, _)
@@ -50,6 +50,13 @@ let Sidebar (api: NotesApi) =
                         prop.title "Open today's daily note (Ctrl+D)"
                         prop.onClick (fun _ -> api.OpenToday ())
                         prop.text "Today"
+                    ]
+                    Html.button [
+                        prop.className
+                            "rounded border border-stone-300 px-2.5 py-1.5 text-sm text-emerald-800 hover:bg-stone-200 dark:border-stone-600 dark:text-emerald-300 dark:hover:bg-stone-700"
+                        prop.title "Open the Firmament (Ctrl+G)"
+                        prop.onClick (fun _ -> onGraph ())
+                        prop.text "✦"
                     ]
                 ]
             ]

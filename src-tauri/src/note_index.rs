@@ -8,6 +8,7 @@
 use crate::link_parser;
 use rusqlite::{params, Connection};
 use serde::Serialize;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -31,6 +32,30 @@ pub struct SearchHit {
 pub struct TagCount {
     pub tag: String,
     pub count: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct GraphNode {
+    pub name: String,
+    /// False for "ghost" nodes: link targets no note file backs yet.
+    pub exists: bool,
+    pub tags: Vec<String>,
+    pub degree: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct GraphEdge {
+    pub source: String,
+    pub target: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct GraphData {
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<GraphEdge>,
 }
 
 pub fn open(db_path: &Path) -> rusqlite::Result<Connection> {
@@ -296,6 +321,82 @@ pub fn all_tags(conn: &Connection) -> rusqlite::Result<Vec<TagCount>> {
     rows.collect()
 }
 
+/// The whole vault as a graph: every note a node, every distinct [[link]]
+/// an edge. Targets resolve case-insensitively to their canonical note;
+/// targets with no note behind them become ghost nodes (exists = false) so
+/// broken links show up in the Firmament instead of vanishing.
+pub fn graph(conn: &Connection) -> rusqlite::Result<GraphData> {
+    let notes = list_notes(conn)?;
+    let mut canonical: HashMap<String, String> = HashMap::new();
+    for n in &notes {
+        canonical.insert(n.name.to_lowercase(), n.name.clone());
+    }
+
+    let mut note_tags: HashMap<String, Vec<String>> = HashMap::new();
+    let mut stmt = conn.prepare("SELECT note, tag FROM tags ORDER BY tag")?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+    })?;
+    for row in rows {
+        let (note, tag) = row?;
+        note_tags.entry(note).or_default().push(tag);
+    }
+
+    let mut stmt = conn.prepare("SELECT source, target FROM links")?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+    })?;
+
+    // BTreeMap keeps ghost ordering deterministic across reloads.
+    let mut ghosts: BTreeMap<String, String> = BTreeMap::new();
+    let mut seen: HashSet<(String, String)> = HashSet::new();
+    let mut edges: Vec<GraphEdge> = Vec::new();
+    for row in rows {
+        let (source, raw_target) = row?;
+        let target_lower = raw_target.to_lowercase();
+        let target = match canonical.get(&target_lower) {
+            Some(name) => name.clone(),
+            None => ghosts
+                .entry(target_lower.clone())
+                .or_insert(raw_target)
+                .clone(),
+        };
+        let source_lower = source.to_lowercase();
+        // A note linking to itself adds nothing worth drawing.
+        if source_lower == target_lower {
+            continue;
+        }
+        if seen.insert((source_lower, target_lower)) {
+            edges.push(GraphEdge { source, target });
+        }
+    }
+
+    let mut degree: HashMap<String, i64> = HashMap::new();
+    for e in &edges {
+        *degree.entry(e.source.to_lowercase()).or_insert(0) += 1;
+        *degree.entry(e.target.to_lowercase()).or_insert(0) += 1;
+    }
+
+    let mut nodes: Vec<GraphNode> = Vec::new();
+    for n in notes {
+        nodes.push(GraphNode {
+            degree: *degree.get(&n.name.to_lowercase()).unwrap_or(&0),
+            tags: note_tags.remove(&n.name).unwrap_or_default(),
+            name: n.name,
+            exists: true,
+        });
+    }
+    for (lower, display) in ghosts {
+        nodes.push(GraphNode {
+            name: display,
+            exists: false,
+            tags: Vec::new(),
+            degree: *degree.get(&lower).unwrap_or(&0),
+        });
+    }
+    Ok(GraphData { nodes, edges })
+}
+
 pub fn notes_for_tag(conn: &Connection, tag: &str) -> rusqlite::Result<Vec<String>> {
     let mut stmt = conn.prepare(
         "SELECT DISTINCT note FROM tags WHERE tag = ?1 ORDER BY note COLLATE NOCASE",
@@ -316,7 +417,7 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         fs::write(
             dir.join("2026-07-03.md"),
-            "# 2026-07-03\n\nWorking on [[Plinth Roadmap]] today. #dev\n",
+            "# 2026-07-03\n\nWorking on [[plinth roadmap]] today, then [[Someday]]. #dev\n",
         )
         .unwrap();
         fs::write(
@@ -359,6 +460,24 @@ mod tests {
         // Multi-term search must match all terms.
         assert_eq!(search(&conn, "ship nothing").unwrap().len(), 0);
         assert_eq!(search(&conn, "ship milestone").unwrap().len(), 1);
+
+        // The Firmament graph: 2 real notes plus a ghost for the broken
+        // link, with the lowercase [[plinth roadmap]] edge resolved to
+        // canonical.
+        let g = graph(&conn).unwrap();
+        assert_eq!(g.nodes.len(), 3);
+        let hub = g.nodes.iter().find(|n| n.name == "Plinth Roadmap").unwrap();
+        assert!(hub.exists);
+        assert_eq!(hub.degree, 1);
+        assert_eq!(hub.tags, vec!["dev".to_string(), "roadmap".to_string()]);
+        let ghost = g.nodes.iter().find(|n| n.name == "Someday").unwrap();
+        assert!(!ghost.exists);
+        assert_eq!(ghost.degree, 1);
+        assert_eq!(g.edges.len(), 2);
+        assert!(g
+            .edges
+            .iter()
+            .any(|e| e.source == "2026-07-03" && e.target == "Plinth Roadmap"));
 
         // Recents: most recently opened first, capped, and pruned on delete.
         touch_recent(&conn, "Plinth Roadmap").unwrap();

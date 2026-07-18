@@ -10,7 +10,7 @@
 <meta property="og:title" content="Plinth — a foundation for your notes" />
 <meta property="og:description" content="A local-first markdown notebook. Plain text, on your drive, exactly where you left it." />
 <meta property="og:type" content="website" />
-<meta property="og:image" content="assets/icon.png" />
+<meta property="og:image" content="assets/firmament-dark.png" />
 
 <link rel="icon" type="image/png" href="assets/icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -64,28 +64,19 @@
   .btn-ghost:hover{border-color:#43516f}
   .fineprint{font-size:13px;color:var(--muted);margin-top:4px}
 
-  /* app mockup */
+  /* app screenshots */
   .mock{margin:52px auto 0;max-width:900px;border:1px solid var(--line);border-radius:14px;overflow:hidden;
     box-shadow:0 30px 80px -30px rgba(0,0,0,.7);background:var(--bg-2)}
   .mock-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#1a2234;border-bottom:1px solid var(--line)}
   .dot{width:12px;height:12px;border-radius:50%}
   .dot.r{background:#e06c60}.dot.y{background:#e6b04b}.dot.g{background:#5fb87f}
   .mock-title{margin-left:12px;font-size:13px;color:var(--muted)}
-  .mock-body{display:grid;grid-template-columns:220px 1fr;min-height:340px}
-  .side{background:#1a2234;border-right:1px solid var(--line);padding:16px 14px;font-size:13.5px}
-  .side .search{background:#141b29;border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--muted);margin-bottom:18px}
-  .side h4{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:16px 0 8px;font-weight:600}
-  .side .item{padding:6px 8px;border-radius:6px;color:var(--stone-dim)}
-  .side .item.active{background:rgba(217,142,72,.12);color:var(--stone)}
-  .tag{display:inline-block;font-size:12px;color:var(--amber-2);background:rgba(217,142,72,.08);border:1px solid rgba(217,142,72,.25);
-    border-radius:6px;padding:2px 8px;margin:3px 4px 0 0}
-  .editor{padding:26px 30px;text-align:left}
-  .editor .note-title{font-size:22px;font-weight:700;margin-bottom:14px}
-  .editor p{color:var(--stone-dim);font-size:15px;margin-bottom:12px}
-  .editor .wl{color:var(--amber-2);border-bottom:1px solid rgba(233,168,96,.4)}
-  .editor .backlinks{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
-  .editor .backlinks h5{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
-  .editor .backlinks a{color:var(--stone-dim);font-size:14px}
+  .mock img{display:block;width:100%}
+  .shots2{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1000px;margin:0 auto}
+  .shots2 figure{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg-2);
+    box-shadow:0 20px 60px -30px rgba(0,0,0,.6)}
+  .shots2 img{display:block;width:100%}
+  .shots2 figcaption{font-size:13.5px;color:var(--muted);padding:12px 16px;border-top:1px solid var(--line)}
 
   /* pillars */
   section{padding:66px 0}
@@ -144,36 +135,36 @@
     </div>
     <p class="fineprint">Free · No account · Works offline</p>
 
-    <!-- app mockup -->
-    <div class="mock" aria-hidden="true">
+    <!-- the Firmament, for real -->
+    <div class="mock">
       <div class="mock-bar">
         <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-        <span class="mock-title">Plinth — my-vault</span>
+        <span class="mock-title">Plinth — the Firmament (Ctrl+G)</span>
       </div>
-      <div class="mock-body">
-        <div class="side">
-          <div class="search">Search notes…</div>
-          <div class="item active">Today</div>
-          <h4>Recent</h4>
-          <div class="item">Plinth Roadmap</div>
-          <div class="item">Reading list</div>
-          <div class="item">2026-07-04</div>
-          <h4>Tags</h4>
-          <div><span class="tag">#idea</span><span class="tag">#project</span><span class="tag">#daily</span></div>
-        </div>
-        <div class="editor">
-          <div class="note-title">Plinth Roadmap</div>
-          <p>Ship the Windows build, then a landing page. See <span class="wl">[[Reading list]]</span> for references.</p>
-          <p>Core stays simple: plain files, fast search, <span class="wl">[[backlinks]]</span>. <span class="tag">#project</span></p>
-          <p>No cloud. No plugins. Move the folder, the app still works.</p>
-          <div class="backlinks">
-            <h5>Linked from</h5>
-            <a>← Reading list</a>
-          </div>
-        </div>
-      </div>
+      <img src="assets/firmament-dark.png"
+        alt="The Firmament in Plinth: every note in the vault drawn as a star, every wiki link a line between them" />
     </div>
   </header>
+
+  <section id="firmament">
+    <div class="section-head">
+      <h2>Look up: the Firmament</h2>
+      <p>The old word for the night sky meant "the vault of heaven." Press <b>Ctrl+G</b> and your vault is drawn
+      overhead — every note a star, every <code>[[link]]</code> a line between them. Daily notes burn amber.
+      Broken links wait as dim, unborn stars until you write them. Drag a star, zoom the sky, click anything to
+      open it.</p>
+    </div>
+    <div class="shots2">
+      <figure>
+        <img src="assets/palette-dark.png" alt="The Plinth command palette open over the editor" />
+        <figcaption><b>Ctrl+K</b> — jump to any note, create one that doesn't exist yet, or run a command. Typo-tolerant, instant, no mouse.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/preview-dark.png" alt="A Plinth note in preview mode with wiki links, tags and backlinks" />
+        <figcaption>Preview mode — wiki links you can follow, tags you can explore, and a live backlinks panel.</figcaption>
+      </figure>
+    </div>
+  </section>
 
   <section id="pillars">
     <div class="section-head">
@@ -211,6 +202,8 @@
       <div class="feat"><span class="mk">▪</span><span><b>Backlinks panel</b> showing what points at the note you're reading.</span></div>
       <div class="feat"><span class="mk">▪</span><span><b>Ranked, typo-tolerant search</b> across everything you've written.</span></div>
       <div class="feat"><span class="mk">▪</span><span><b>Tag explorer</b> for <code>#tags</code>, right in the sidebar.</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>The Firmament</b> — your whole vault as a living star map (<code>Ctrl+G</code>).</span></div>
+      <div class="feat"><span class="mk">▪</span><span><b>Command palette</b> to jump, create and act without the mouse (<code>Ctrl+K</code>).</span></div>
       <div class="feat"><span class="mk">▪</span><span><b>Light and dark</b> themes that remember your choice.</span></div>
       <div class="feat"><span class="mk">▪</span><span><b>Export your vault</b> to a zip anytime. Leave whenever you like.</span></div>
     </div>

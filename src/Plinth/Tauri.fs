@@ -68,6 +68,10 @@ let search (query: string) : JS.Promise<SearchHit[]> =
 let getBacklinks (name: string) : JS.Promise<string[]> =
     invoke "get_backlinks" {| name = name |}
 
+/// The whole vault as a graph for the Firmament view.
+let getGraph () : JS.Promise<GraphData> =
+    invoke "get_graph" (createObj [])
+
 let getTags () : JS.Promise<TagCount[]> =
     invoke "get_tags" (createObj [])
 

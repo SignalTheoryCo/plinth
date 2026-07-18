@@ -4,6 +4,7 @@ module Plinth.Pages.NoteView
 
 open Browser.Dom
 open Feliz
+open Plinth
 open Plinth.Types
 open Plinth.Hooks
 open Plinth.Hooks.UseSettings
@@ -71,6 +72,9 @@ let NoteView () =
     let api = UseNotes.useNotes ()
     let search = UseSearch.useSearch ()
     let settings = useSettings ()
+    let showGraph, setShowGraph = React.useState false
+    let graphData, setGraphData = React.useState<GraphData option> None
+    let showPalette, setShowPalette = React.useState false
 
     let currentName =
         match api.Current with
@@ -87,6 +91,20 @@ let NoteView () =
     let noteExists (name: string) =
         noteSet.Contains (name.Trim().ToLowerInvariant())
 
+    // Fetch a fresh snapshot each time the Firmament opens, so new
+    // notes and links written since the last look are already in the sky.
+    let openGraph () =
+        promise {
+            try
+                let! g = Tauri.getGraph ()
+                setGraphData (Some g)
+                setShowGraph true
+            with _ -> ()
+        }
+        |> Promise.start
+
+    let hasVault = api.Current <> NoVault
+
     // Ctrl/Cmd+D opens (creating if needed) today's daily note.
     let keyboardEffect () : unit -> unit =
         let handler (e: Browser.Types.Event) =
@@ -101,10 +119,58 @@ let NoteView () =
 
     React.useEffect (keyboardEffect, [||])
 
+    // Ctrl/Cmd+K palette and Ctrl/Cmd+G Firmament. Re-bound whenever
+    // the toggles change so the handler never closes over stale state.
+    let overlayKeysEffect () : unit -> unit =
+        let handler (e: Browser.Types.Event) =
+            let ke = e :?> Browser.Types.KeyboardEvent
+            let key = ke.key.ToLowerInvariant()
+
+            if (ke.ctrlKey || ke.metaKey) && (key = "k" || key = "p") then
+                ke.preventDefault ()
+
+                if hasVault then
+                    setShowPalette (not showPalette)
+            elif (ke.ctrlKey || ke.metaKey) && key = "g" then
+                ke.preventDefault ()
+
+                if hasVault then
+                    if showGraph then setShowGraph false else openGraph ()
+
+        window.addEventListener ("keydown", handler)
+        fun () -> window.removeEventListener ("keydown", handler)
+
+    React.useEffect (overlayKeysEffect, [| box showPalette; box showGraph; box hasVault |])
+
+    let paletteActions: Palette.PaletteAction list =
+        [ { Label = "Open today's daily note"
+            Hint = "Ctrl+D"
+            Run = api.OpenToday }
+          { Label = "Open the Firmament"
+            Hint = "Ctrl+G"
+            Run = openGraph }
+          { Label =
+              (if settings.Theme = Dark then
+                   "Switch to light theme"
+               else
+                   "Switch to dark theme")
+            Hint = "theme"
+            Run =
+              fun () ->
+                  settings.SetTheme (
+                      if settings.Theme = Dark then Light else Dark
+                  ) }
+          { Label = "Export vault as .zip…"
+            Hint = "vault"
+            Run = api.ExportVault }
+          { Label = "Change vault folder…"
+            Hint = "vault"
+            Run = api.PickVault } ]
+
     Html.div [
         prop.className (
             (if settings.Theme = Dark then "dark " else "")
-            + "flex h-screen bg-stone-50 font-sans text-stone-800 dark:bg-stone-900 dark:text-stone-200"
+            + "relative flex h-screen bg-stone-50 font-sans text-stone-800 dark:bg-stone-900 dark:text-stone-200"
         )
         prop.children [
             match api.Current with
@@ -126,7 +192,7 @@ let NoteView () =
                             ]
                         ]
                         Search.SearchBox search api.OpenNote
-                        Sidebar.Sidebar api
+                        Sidebar.Sidebar api openGraph
                     ]
                 ]
 
@@ -170,5 +236,27 @@ let NoteView () =
                           OnDelete = fun () -> api.DeleteNote name }
 
                 Backlinks.Backlinks currentName api.Backlinks api.OpenNote
+
+                if showGraph then
+                    match graphData with
+                    | Some g ->
+                        Graph.Firmament
+                            { Data = g
+                              Current = currentName
+                              Dark = settings.Theme = Dark
+                              OnOpen =
+                                fun name ->
+                                    setShowGraph false
+                                    api.OpenNote name
+                              OnClose = fun () -> setShowGraph false }
+                    | None -> Html.none
+
+                if showPalette then
+                    Palette.Palette
+                        { Notes = api.Notes
+                          Recents = api.Recents
+                          Actions = paletteActions
+                          OnOpen = api.OpenNote
+                          OnClose = fun () -> setShowPalette false }
         ]
     ]

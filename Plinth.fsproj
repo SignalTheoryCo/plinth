@@ -20,6 +20,8 @@
     <Compile Include="src/Plinth/Components/Sidebar.fs" />
     <Compile Include="src/Plinth/Components/Backlinks.fs" />
     <Compile Include="src/Plinth/Components/Settings.fs" />
+    <Compile Include="src/Plinth/Components/Graph.fs" />
+    <Compile Include="src/Plinth/Components/Palette.fs" />
     <Compile Include="src/Plinth/Pages/NoteView.fs" />
     <Compile Include="src/Plinth/App.fs" />
   </ItemGroup>

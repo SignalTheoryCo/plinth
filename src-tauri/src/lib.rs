@@ -1,7 +1,7 @@
 mod link_parser;
 mod note_index;
 
-use note_index::{NoteMeta, SearchHit, TagCount};
+use note_index::{GraphData, NoteMeta, SearchHit, TagCount};
 use rusqlite::Connection;
 use serde::Serialize;
 use std::fs;
@@ -189,6 +189,13 @@ fn get_backlinks(name: String, state: State<AppState>) -> Result<Vec<String>, St
 }
 
 #[tauri::command]
+fn get_graph(state: State<AppState>) -> Result<GraphData, String> {
+    with_vault(&state, |v| {
+        note_index::graph(&v.conn).map_err(|e| e.to_string())
+    })
+}
+
+#[tauri::command]
 fn get_tags(state: State<AppState>) -> Result<Vec<TagCount>, String> {
     with_vault(&state, |v| {
         note_index::all_tags(&v.conn).map_err(|e| e.to_string())
@@ -215,6 +222,7 @@ pub fn run() {
             delete_file,
             search,
             get_backlinks,
+            get_graph,
             get_tags,
             get_notes_by_tag,
             get_recents,
