@@ -55,7 +55,7 @@ And a tool for thinking should never grow a marketplace.
 
 Plinth is free and open source, MIT licensed. Read it, fork it, keep it running long after I stop maintaining it. The files are yours either way, which is the entire point.
 
-**[Download the latest Windows installer](https://github.com/SignalTheoryCo/plinth/releases/latest)** (Windows SmartScreen may warn on the unsigned build; choose "More info", then "Run anyway").
+**[Download the latest Windows installer](https://github.com/sebbejones/plinth/releases/latest)** (Windows SmartScreen may warn on the unsigned build; choose "More info", then "Run anyway").
 
 ## Tech stack
 
