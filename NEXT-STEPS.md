@@ -1,22 +1,19 @@
 # Plinth — Next Steps
 
-Status as of 2026-07-18: **v0.2.0 — "the Firmament" — is code-complete and
-committed.** The vault graph view (Ctrl+G), command palette (Ctrl+K), browser
-dev mode, real screenshots, and the updated landing page are all in the repo.
-v0.1.0 remains the published release on GitHub
-(https://github.com/SignalTheoryCo/plinth) until you cut the new one.
+Status as of 2026-07-18 (night): **v0.2.0 — "the Firmament" — is SHIPPED.**
+Pushed, installer built, and published as the latest GitHub release
+(https://github.com/SignalTheoryCo/plinth/releases/tag/v0.2.0). The landing
+page Download button serves it via `/releases/latest`.
 
-## To ship v0.2.0
+## Open decision
 
-1. **Push to GitHub.** Everything is committed locally on `main`; just
-   `git push`.
-2. **Build the installer.** Run `build.cmd` (or `npm run tauri build`).
-   The bundle lands in `src-tauri/target/release/bundle/nsis/` as
-   `Plinth_0.2.0_x64-setup.exe`.
-3. **Publish the release.** New GitHub release tagged `v0.2.0`, attach the
-   installer, paste the highlights from README (Firmament, palette). The
-   landing page Download button points at `/releases/latest`, so it starts
-   serving 0.2.0 automatically.
+- **Pick the README direction.** Two drafts sit untracked in the repo root and
+  they disagree on the business model, not just tone: `README-draft-A-product.md`
+  (paid one-time purchase + optional Plinth Sync subscription) vs.
+  `README-draft-B-statement.md` (free and open source, statement piece). This
+  also decides how Plinth is framed as evidence in the Teach AI Your Business
+  course. The current README shipped with v0.2.0 and is fine until this is
+  settled. (`demo-vault/` is also untracked; sort it with this decision.)
 
 ## Still open from before
 
