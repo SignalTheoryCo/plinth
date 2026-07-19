@@ -1,3 +1,6 @@
+# Local screenshot/demo content, not part of the app
+demo-vault/
+
 # Rust
 target/
 

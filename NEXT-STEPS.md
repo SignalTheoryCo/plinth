@@ -5,15 +5,14 @@ Pushed, installer built, and published as the latest GitHub release
 (https://github.com/SignalTheoryCo/plinth/releases/tag/v0.2.0). The landing
 page Download button serves it via `/releases/latest`.
 
-## Open decision
+## Decided 2026-07-18 (Sebbe): Plinth is FREE and open source
 
-- **Pick the README direction.** Two drafts sit untracked in the repo root and
-  they disagree on the business model, not just tone: `README-draft-A-product.md`
-  (paid one-time purchase + optional Plinth Sync subscription) vs.
-  `README-draft-B-statement.md` (free and open source, statement piece). This
-  also decides how Plinth is framed as evidence in the Teach AI Your Business
-  course. The current README shipped with v0.2.0 and is fine until this is
-  settled. (`demo-vault/` is also untracked; sort it with this decision.)
+Draft B adopted as the README (with the v0.2.0 features folded in), MIT
+LICENSE added, landing byline now links to sebbejones.com. Both draft files
+deleted after adoption; `demo-vault/` gitignored (local screenshot content).
+For the record, draft A's paid-product idea (one-time purchase + optional
+"Plinth Sync" subscription) is parked, not lost: revisit only if Plinth ever
+outgrows its role as free evidence for the Teach AI Your Business course.
 
 ## Still open from before
 
