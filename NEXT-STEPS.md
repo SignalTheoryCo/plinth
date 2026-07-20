@@ -37,10 +37,14 @@ the page on a github.io address instead of the domain.
 The page itself is verified good. Served locally from `landing/`, every asset
 loaded, no console errors, all sections rendered.
 
-**Not done yet.** `landing/index.html` is a standalone page with its own nav and
-styling. Dropping it into the site as-is would clash with the site's design.
-That integration is the open task: match the site's header, footer, and type,
-then add it to nav and `llms.txt`.
+**DONE 2026-07-20.** The page is live at https://sebbejones.com/plinth/,
+rebuilt in the site's brand system (cream/Georgia, dark hero band, sticky nav)
+in the `sebbejones-site` repo (`plinth/index.html` plus the three screenshots
+in `plinth/assets/`). Footer links added on the homepage, /workshop, and
+/course; llms.txt gained a "Proof: Plinth" section; the page carries
+SoftwareApplication schema. `landing/index.html` in this repo stays as the
+standalone original; the site copy is the deployed one, so style edits should
+happen there.
 
 ## Still open
 
@@ -54,5 +58,6 @@ then add it to nav and `llms.txt`.
 
 ## How to pick up next session
 
-Open this file. The next job is putting the landing page on sebbejones.com as
-`/plinth`, restyled to match the site. Everything else on the list can wait.
+Open this file. The landing page shipped to sebbejones.com/plinth on
+2026-07-20, so the list above ("Still open") is what remains: code signing,
+a self-standing build, and the `.plinth` nesting check. None are urgent.
